@@ -36,10 +36,12 @@
     color: var(--cream);
     font-family: 'Rubik', sans-serif;
     position: relative;
-  }
 
-  body.has-cursor, body.has-cursor a, body.has-cursor button{
-    cursor: none;
+    /* Убираем тач-хайлайт и выделение текста */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   a{ color: inherit; text-decoration: none; }
@@ -80,6 +82,17 @@
     height: 100vh;
     z-index: 2;
     display: block;
+
+    /* Убираем рамку фокуса, выделение и тач-хайлайт */
+    outline: none;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;   /* canvas не перехватывает клики — рамок не будет */
   }
 
   /* Планшеты */
@@ -99,7 +112,6 @@
       right: auto;
       height: 70vh;
       top: 15vh;
-      opacity: 1;
     }
   }
 
@@ -110,7 +122,6 @@
       right: auto;
       height: 60vh;
       top: 20vh;
-      opacity: 1;
     }
   }
 
@@ -422,7 +433,7 @@
     color: var(--white-50);
   }
 
-  /* ---------- Responsive hero ---------- */
+  /* ---------- Responsive hero (тексты меньше на мобильных) ---------- */
   @media (max-width: 900px){
     .vignette{
       background:
@@ -430,18 +441,39 @@
     }
     main.hero{ padding: 110px 24px 0; align-items: flex-start; }
     .hero-left{ width: 100%; }
-    h1{ font-size: clamp(30px, 8vw, 42px); }
-    .lede{ max-width: 100%; }
+
+    /* Заголовок — компактнее */
+    h1{ font-size: clamp(22px, 6.5vw, 32px); margin-top: 12px; }
+
+    /* Подзаголовок — меньше */
+    .lede{ font-size: 13px; line-height: 1.45; margin-top: 14px; }
+
+    /* Бейдж — меньше */
+    .badge{ font-size: 9px; letter-spacing: .1em; }
+    .badge-check{ width: 18px; height: 18px; font-size: 10px; }
+
+    /* Цифры-статистика — меньше */
+    .data-num{ font-size: 16px; }
+    .data-label{ font-size: 8.5px; }
+
     .hero-right{ display:none; }
   }
   @media (max-width: 560px){
     header{ padding: 0 18px; height: 78px; }
     .brand-index{ display:none; }
+    .logo{ font-size: 15px; }
+    .menu-pill a{ font-size: 11px; padding: 6px 12px; }
+
     footer{ padding: 0 18px; flex-direction: column; align-items: flex-start; gap: 4px; height: 60px; justify-content:center; }
     .data-row{ display:none; }
-    .hero-actions{ gap: 14px; flex-wrap: wrap; }
-    .btn-cream{ height: 50px; padding: 0 20px; font-size: 12.5px; }
-    .btn-play{ width: 50px; height: 50px; }
+
+    h1{ font-size: clamp(20px, 7vw, 28px); }
+    .lede{ font-size: 12.5px; }
+
+    .hero-actions{ gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    .btn-cream{ height: 42px; padding: 0 18px; font-size: 11.5px; }
+    .btn-play{ width: 42px; height: 42px; font-size: 14px; }
+    .btn-play-wrap span{ font-size: 9px; letter-spacing: .1em; }
   }
 
   /* ---------- Reveal ---------- */
@@ -675,7 +707,7 @@
   var pointerFine = window.matchMedia('(pointer: fine)').matches;
 
   /* ============================================================
-     ★★★  ФИНАЛЬНЫЕ НАСТРОЙКИ — ПОДОБРАНЫ ВАМИ  ★★★
+     ★★★  ФИНАЛЬНЫЕ НАСТРОЙКИ  ★★★
      ============================================================ */
   var CENTER_RATIO_X = 0.625;
   var CENTER_RATIO_Y = 0.425;
@@ -733,7 +765,6 @@
     ctx.drawImage(img, dx, dy, dw, dh);
   }
 
-  /* ---------- Центр персонажа на экране ---------- */
   function getCenterScreen(){
     var rect = canvas.getBoundingClientRect();
     return {
@@ -742,7 +773,6 @@
     };
   }
 
-  /* ---------- Pointer tracking ---------- */
   var currentFrame = 0;
   var targetFrame = 0;
   var lastMoveTime = performance.now();
@@ -789,7 +819,6 @@
     }
   }, { passive: true });
 
-  /* ---------- Animation loop ---------- */
   function startLoop(){
     function loop(now){
       if(!idleTriggered && now - lastMoveTime > 7000){
@@ -845,7 +874,6 @@
     });
   }
 
-  /* ---------- Fallback ---------- */
   setTimeout(function(){
     if(!document.body.classList.contains('ready')){
       document.body.classList.add('ready');
