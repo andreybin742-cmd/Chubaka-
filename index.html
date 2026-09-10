@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ЧУБАКА — чего нос повесил?</title>
+<meta name="theme-color" content="#06393b">
+<meta name="description" content="Чубака следит за вашим курсором взглядом и носом. Покадровая интерактивная анимация на 299 кадров.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%A4%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #35b6b0;
+    --deep: #06393b;
+    --panel: rgba(6,49,51,.46);
+    --cream: #fff3dd;
+    --cream-ink: #16393b;
+    --accent: #ff8a3d;
+    --violet: #8a6cff;
+    --white-70: rgba(255,255,255,.7);
+    --white-50: rgba(255,255,255,.5);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body{
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Rubik', sans-serif;
+    position: relative;
+  }
+
+  body.has-cursor, body.has-cursor a, body.has-cursor button{
+    cursor: none;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+  button{ font-family: inherit; background: none; border: none; color: inherit; }
+
+  /* ---------- Background layers ---------- */
+  .stage-glow{
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .stage-glow.violet{
+    width: 520px; height: 520px;
+    background: rgba(138,108,255,.34);
+    left: -160px; bottom: -180px;
+  }
+  .stage-glow.orange{
+    width: 460px; height: 460px;
+    background: rgba(255,138,61,.26);
+    right: -120px; top: -140px;
+  }
+  .vignette{
+    position: fixed; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(6,49,51,.6) 0%, rgba(6,49,51,0) 60%),
+      linear-gradient(rgba(6,49,51,.45), rgba(6,49,51,0) 18%, rgba(6,49,51,0) 78%, rgba(6,49,51,.55));
+  }
+
+  /* ---------- Canvas character ---------- */
+  #chubaka{
+    position: fixed;
+    top: 0; right: 0;
+    width: 58vw;
+    height: 100vh;
+    z-index: 2;
+    display: block;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 0 32px;
+    z-index: 20;
+  }
+  .brand{ display:flex; align-items:baseline; gap: 12px; }
+  .logo{
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: .02em;
+  }
+  .brand-index{
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--white-50);
+  }
+  .menu-pill{
+    display:flex;
+    gap: 4px;
+    background: var(--panel);
+    backdrop-filter: blur(10px);
+    border-radius: 999px;
+    padding: 6px;
+  }
+  .menu-pill a{
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 999px;
+    color: var(--white-70);
+    transition: background .2s ease, color .2s ease;
+  }
+  .menu-pill a.active{
+    background: var(--cream);
+    color: var(--cream-ink);
+  }
+  .menu-pill a:not(.active):hover{ color: var(--cream); }
+  .menu-spacer{ flex: 1; }
+  .nose-btn{
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--panel);
+    backdrop-filter: blur(10px);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 18px;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .nose-btn:hover{ background: var(--accent); transform: scale(1.06); }
+
+  @media (max-width: 1100px){
+    .menu-pill.secondary{ display:none; }
+  }
+
+  /* ---------- Hero ---------- */
+  main.hero{
+    position: relative;
+    z-index: 10;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 0 32px;
+  }
+  .hero-left{
+    width: min(720px, 52vw);
+    padding-top: 20px;
+  }
+  .badge{
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--white-70);
+  }
+  .badge-check{
+    width: 23px; height: 23px;
+    border-radius: 50%;
+    background: var(--violet);
+    color: #fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  h1{
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: clamp(32px, 3.6vw, 64px);
+    line-height: 1.12;
+    color: #fff;
+    text-shadow: 0 6px 30px rgba(6,49,51,.5);
+    margin: 18px 0 0;
+  }
+  .lede{
+    font-size: 16.5px;
+    line-height: 1.55;
+    color: var(--white-70);
+    max-width: 42ch;
+    margin: 22px 0 0;
+  }
+  .data-row{
+    display:flex;
+    gap: 34px;
+    margin: 34px 0 0;
+  }
+  .data-item{ display:flex; flex-direction: column; gap: 4px; }
+  .data-num{
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--cream);
+  }
+  .data-label{
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--white-50);
+  }
+  .hero-actions{
+    display:flex;
+    align-items:center;
+    gap: 22px;
+    margin: 38px 0 0;
+  }
+  .btn-cream{
+    height: 56px;
+    display:inline-flex;
+    align-items:center;
+    padding: 0 26px;
+    background: var(--cream);
+    color: var(--cream-ink);
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .btn-cream:hover{ background: var(--accent); color: #fff; transform: translateY(-1px); }
+  .btn-play-wrap{ display:flex; align-items:center; gap: 13px; }
+  .btn-play{
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 18px;
+    display:flex; align-items:center; justify-content:center;
+    transition: transform .2s ease, filter .2s ease;
+  }
+  .btn-play:hover{ transform: scale(1.06); filter: brightness(1.08); }
+  .btn-play-wrap span{
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--white-70);
+  }
+
+  /* ---------- Right column: avatars + cards ---------- */
+  .hero-right{
+    position: absolute;
+    right: 32px;
+    top: 0;
+    height: 100vh;
+    width: 46vw;
+    pointer-events: none;
+  }
+  .avatars{
+    position: absolute;
+    top: 128px;
+    right: 0;
+    display:flex;
+    align-items: center;
+    pointer-events: auto;
+  }
+  .avatar{
+    width: 46px; height: 46px;
+    border-radius: 14px;
+    border: 2px solid var(--cream);
+    object-fit: cover;
+    object-position: 55% 18%;
+    margin-left: -12px;
+    transform: rotate(var(--r));
+    box-shadow: 0 6px 16px rgba(6,49,51,.35);
+  }
+  .avatar:first-child{ margin-left: 0; }
+  .avatars-caption{
+    margin-left: 18px;
+    display:flex;
+    flex-direction: column;
+    gap: 2px;
+    white-space: nowrap;
+  }
+  .avatars-caption strong{ font-size: 13px; font-weight: 500; color: var(--cream); }
+  .avatars-caption span{
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--white-50);
+  }
+
+  .cards{
+    position: absolute;
+    bottom: 118px;
+    right: 0;
+    display:flex;
+    gap: 20px;
+    pointer-events: auto;
+  }
+  .sticker{
+    width: 210px;
+    background: var(--cream);
+    color: var(--cream-ink);
+    border-radius: 26px;
+    padding: 16px;
+    transform: rotate(var(--r));
+    transition: transform .3s cubic-bezier(.2,.7,.3,1), box-shadow .3s ease;
+    box-shadow: 0 14px 28px rgba(6,49,51,.28);
+    display:block;
+  }
+  .sticker.offset{ margin-top: 14px; }
+  .sticker:hover{
+    transform: rotate(0deg) translateY(-6px);
+    box-shadow: 0 22px 38px rgba(6,49,51,.36);
+  }
+  .sticker img{
+    width: 100%;
+    height: 84px;
+    object-fit: cover;
+    object-position: 55% 20%;
+    border-radius: 999px;
+    display: block;
+  }
+  .sticker h3{
+    font-family: 'Unbounded', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 14px 0 0;
+    line-height: 1.3;
+  }
+  .sticker p{
+    font-size: 11px;
+    color: #5c7876;
+    margin: 6px 0 0;
+    line-height: 1.4;
+  }
+  .sticker-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--deep);
+    color: var(--cream);
+    font-size: 14px;
+    margin-top: 14px;
+    transition: background .2s ease;
+  }
+  .sticker:hover .sticker-btn{ background: var(--accent); }
+
+  .vertical-label{
+    position: fixed;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    transform-origin: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--white-50);
+    white-space: nowrap;
+    z-index: 15;
+  }
+
+  @media (max-width: 1500px){ .avatars{ display:none; } }
+  @media (max-width: 1240px){ .cards{ display:none; } }
+  @media (max-width: 900px){ .vertical-label{ display:none; } }
+
+  /* ---------- Footer ---------- */
+  footer{
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 74px;
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 0 32px;
+    z-index: 20;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--white-50);
+  }
+
+  /* ---------- Responsive hero ---------- */
+  @media (max-width: 900px){
+    #chubaka{ width: 100vw; opacity: .55; }
+    .vignette{
+      background:
+        linear-gradient(rgba(6,49,51,.35), rgba(6,49,51,.15) 30%, rgba(6,49,51,.55) 75%, rgba(6,49,51,.85));
+    }
+    main.hero{ padding: 110px 24px 0; align-items: flex-start; }
+    .hero-left{ width: 100%; }
+    h1{ font-size: clamp(30px, 8vw, 42px); }
+    .lede{ max-width: 100%; }
+    .hero-right{ display:none; }
+  }
+  @media (max-width: 560px){
+    header{ padding: 0 18px; height: 78px; }
+    .brand-index{ display:none; }
+    footer{ padding: 0 18px; flex-direction: column; align-items: flex-start; gap: 4px; height: 60px; justify-content:center; }
+    .data-row{ display:none; }
+    .hero-actions{ gap: 14px; flex-wrap: wrap; }
+    .btn-cream{ height: 50px; padding: 0 20px; font-size: 12.5px; }
+    .btn-play{ width: 50px; height: 50px; }
+  }
+
+  /* ---------- Reveal ---------- */
+  .reveal{
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity .8s cubic-bezier(.3,1.3,.5,1), transform .8s cubic-bezier(.3,1.3,.5,1);
+    transition-delay: var(--delay, 0s);
+  }
+  body.ready .reveal{ opacity: 1; transform: translateY(0); }
+
+  /* ---------- Custom cursor ---------- */
+  #cursor-dot, #cursor-ring{
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 100;
+    transform: translate(-50%,-50%);
+  }
+  #cursor-dot{
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cream);
+    box-shadow: 0 0 10px 2px rgba(255,243,221,.7);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  #cursor-ring{
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--cream);
+    opacity: 0;
+    transition: width .25s ease, height .25s ease, border-color .25s ease, background .25s ease, opacity .2s ease;
+  }
+  #cursor-ring .ring-text{
+    position: absolute;
+    inset: -44px;
+    width: 124px; height: 124px;
+    animation: spin 16s linear infinite;
+    fill: rgba(255,243,221,.55);
+    font-size: 8.5px;
+    letter-spacing: .04em;
+  }
+  body.has-cursor #cursor-dot, body.has-cursor #cursor-ring{ opacity: 1; }
+  #cursor-ring.hover{
+    width: 58px; height: 58px;
+    border-color: var(--accent);
+    background: rgba(255,138,61,.14);
+  }
+  #cursor-ring.hover .ring-text{ opacity: .18; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  @media (pointer: coarse){
+    #cursor-dot, #cursor-ring{ display:none !important; }
+  }
+
+  /* ---------- Loader ---------- */
+  #loader{
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--deep);
+    display:flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 48px;
+    transition: opacity .6s ease, visibility .6s ease;
+  }
+  body.ready #loader{ opacity: 0; visibility: hidden; pointer-events: none; }
+  .loader-pct{
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: clamp(52px, 7.2vw, 96px);
+    font-variant-numeric: tabular-nums;
+    color: var(--cream);
+    line-height: 1;
+  }
+  .loader-info{
+    display:flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 18px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--white-50);
+  }
+  .loader-track{
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,.12);
+    border-radius: 999px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .loader-bar{
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width .15s ease;
+  }
+
+  a:focus-visible, button:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .reveal{ transition: none; }
+    #cursor-ring{ transition: none; }
+    .ring-text{ animation: none !important; }
+    .sticker{ transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-glow violet"></div>
+<div class="stage-glow orange"></div>
+<div class="vignette"></div>
+
+<canvas id="chubaka" aria-label="Чубака — покадровая анимация персонажа, который следит взглядом за курсором"></canvas>
+
+<header>
+  <div class="brand">
+    <span class="logo">ЧУБАКА</span>
+    <span class="brand-index">NOSE CLUB / 01</span>
+  </div>
+  <nav class="menu-pill" aria-label="Основная навигация">
+    <a href="#" class="active">Главная</a>
+    <a href="#">Носы</a>
+    <a href="#">Характер</a>
+  </nav>
+  <div class="menu-spacer"></div>
+  <nav class="menu-pill secondary" aria-label="Дополнительная навигация">
+    <a href="#">Полёты</a>
+    <a href="#">Миссии</a>
+    <a href="#">Ещё</a>
+  </nav>
+  <button class="nose-btn" aria-label="Меню носа">👃</button>
+</header>
+
+<main class="hero">
+  <div class="hero-left">
+    <div class="badge reveal" style="--delay:.05s">
+      <span class="badge-check">✓</span>
+      ОФИЦИАЛЬНО: НОС ПОВЕШЕН
+    </div>
+    <h1 class="reveal" style="--delay:.14s">ЧЕГО НОС<br>ПОВЕСИЛ?</h1>
+    <p class="lede reveal" style="--delay:.24s">Поводите курсором по экрану. Чубака проводит его взглядом — и носом — куда бы вы ни направились.</p>
+    <div class="data-row reveal" style="--delay:.34s">
+      <div class="data-item"><span class="data-num">299</span><span class="data-label">кадров</span></div>
+      <div class="data-item"><span class="data-num">360°</span><span class="data-label">обзор</span></div>
+      <div class="data-item"><span class="data-num">1</span><span class="data-label">нос</span></div>
+    </div>
+    <div class="hero-actions reveal" style="--delay:.44s">
+      <a href="#" class="btn-cream">НАЧАТЬ ГЛЯДЕЛКИ →</a>
+      <div class="btn-play-wrap">
+        <button class="btn-play" aria-label="Смотреть характер">▶️</button>
+        <span>СМОТРЕТЬ ХАРАКТЕР</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="avatars reveal" style="--delay:.5s">
+      <img class="avatar" style="--r:-3deg" src="frames_chubaka/f091.jpg" alt="">
+      <img class="avatar" style="--r:3deg" src="frames_chubaka/f121.jpg" alt="">
+      <img class="avatar" style="--r:-3deg" src="frames_chubaka/f234.jpg" alt="">
+      <img class="avatar" style="--r:3deg" src="frames_chubaka/f286.jpg" alt="">
+      <div class="avatars-caption">
+        <strong>Миссия Чубаки началась</strong>
+        <span>НОС ПО ВЕТРУ</span>
+      </div>
+    </div>
+
+    <div class="cards reveal" style="--delay:.6s">
+      <a href="#" class="sticker" style="--r:-2deg">
+        <img src="frames_chubaka/f001.jpg" alt="">
+        <h3>Прими носатый вызов</h3>
+        <p>С полной серьёзностью и хоботом</p>
+        <span class="sticker-btn">→</span>
+      </a>
+      <a href="#" class="sticker offset" style="--r:2deg">
+        <img src="frames_chubaka/f241.jpg" alt="">
+        <h3>Главный нос галактики</h3>
+        <p>Ни одно препятствие его не остановит</p>
+        <span class="sticker-btn">→</span>
+      </a>
+    </div>
+  </div>
+</main>
+
+<div class="vertical-label" aria-hidden="true">NOSE INTERFACE / 001</div>
+
+<footer>
+  <span>© 2026 ЧУБАКА LAB · нос по ветру</span>
+  <span>ДВИГАЙТЕ КУРСОРОМ · ОН НАБЛЮДАЕТ</span>
+</footer>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="loader-pct" id="loaderPct">0%</div>
+  <div class="loader-info">
+    <span>ЗАГРУЖАЕМ ВЗГЛЯДЫ</span>
+    <span>299 КАДРОВ</span>
+  </div>
+  <div class="loader-track"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
+
+<div id="cursor-dot" aria-hidden="true"></div>
+<div id="cursor-ring" aria-hidden="true">
+  <svg class="ring-text" viewBox="0 0 124 124" xmlns="http://www.w3.org/2000/svg">
+    <defs><path id="circlePath" d="M62,62 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0"/></defs>
+    <text>
+      <textPath href="#circlePath" textLength="295" lengthAdjust="spacing">ЧУБАКА НАБЛЮДАЕТ • НОС ПО ВЕТРУ • ОН ВИДИТ •</textPath>
+    </text>
+  </svg>
+</div>
+
+<script>
+(function(){
+  var TOTAL = 299;
+  var canvas = document.getElementById('chubaka');
+  var ctx = canvas.getContext('2d');
+  var loaderPct = document.getElementById('loaderPct');
+  var loaderBar = document.getElementById('loaderBar');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var pointerFine = window.matchMedia('(pointer: fine)').matches;
+
+  /* ---------- Preload frames ---------- */
+  var frames = new Array(TOTAL);
+  var loaded = 0;
+
+  function frameSrc(i){
+    var n = String(i + 1).padStart(3, '0');
+    return 'frames_chubaka/f' + n + '.jpg';
+  }
+
+  function onFrameLoaded(){
+    loaded++;
+    var pct = Math.round((loaded / TOTAL) * 100);
+    loaderPct.textContent = pct + '%';
+    loaderBar.style.width = pct + '%';
+    if(loaded >= TOTAL){
+      document.body.classList.add('ready');
+      startLoop();
+    }
+  }
+
+  for(var i = 0; i < TOTAL; i++){
+    var img = new Image();
+    img.onload = onFrameLoaded;
+    img.onerror = onFrameLoaded;
+    img.src = frameSrc(i);
+    frames[i] = img;
+  }
+
+  /* ---------- Canvas sizing ---------- */
+  function resizeCanvas(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = canvas.clientWidth * dpr;
+    canvas.height = canvas.clientHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawFrame(index){
+    var img = frames[Math.max(0, Math.min(TOTAL - 1, Math.round(index)))];
+    if(!img || !img.complete || !img.naturalWidth) return;
+    var cw = canvas.clientWidth, ch = canvas.clientHeight;
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var scale = Math.max(cw / iw, ch / ih);
+    var dw = iw * scale, dh = ih * scale;
+    var dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  /* ---------- Pointer tracking & frame mapping ---------- */
+  var pointerX = window.innerWidth * 0.5;
+  var pointerY = window.innerHeight * 0.4;
+  var currentFrame = 0;
+  var targetFrame = 0;
+  var lastMoveTime = performance.now();
+  var idleTriggered = false;
+
+  function circularDelta(a, b, total){
+    var d = b - a;
+    d = ((d % total) + total) % total;
+    if(d > total / 2) d -= total;
+    return d;
+  }
+
+  function updateTargetFromPointer(x, y){
+    var rect = canvas.getBoundingClientRect();
+    var cx = rect.left + rect.width * 0.52;
+    var cy = rect.top + rect.height * 0.36;
+    var angle = Math.atan2(y - cy, x - cx);
+    var norm = (angle + Math.PI) / (Math.PI * 2);
+    targetFrame = Math.round(norm * (TOTAL - 1));
+    lastMoveTime = performance.now();
+    idleTriggered = false;
+  }
+
+  function handlePointer(x, y){
+    pointerX = x; pointerY = y;
+    updateTargetFromPointer(x, y);
+  }
+
+  window.addEventListener('pointermove', function(e){
+    handlePointer(e.clientX, e.clientY);
+  }, { passive: true });
+
+  window.addEventListener('touchmove', function(e){
+    if(e.touches && e.touches[0]){
+      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchstart', function(e){
+    if(e.touches && e.touches[0]){
+      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+
+  /* ---------- Animation loop ---------- */
+  function startLoop(){
+    function loop(now){
+      if(!idleTriggered && now - lastMoveTime > 7000){
+        targetFrame = 0; // нейтральный кадр — смотрит в камеру
+        idleTriggered = true;
+      }
+      var delta = circularDelta(currentFrame, targetFrame, TOTAL);
+      currentFrame += delta * (reduceMotion ? 1 : 0.12);
+      currentFrame = ((currentFrame % TOTAL) + TOTAL) % TOTAL;
+      drawFrame(currentFrame);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- Custom cursor ---------- */
+  if(pointerFine){
+    document.body.classList.add('has-cursor');
+    var dot = document.getElementById('cursor-dot');
+    var ring = document.getElementById('cursor-ring');
+    var ringX = pointerX, ringY = pointerY;
+    var lastT = performance.now();
+
+    window.addEventListener('pointermove', function(e){
+      dot.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px) translate(-50%,-50%)';
+    }, { passive: true });
+
+    function ringLoop(now){
+      var dt = Math.min((now - lastT) / 1000, 0.1);
+      lastT = now;
+      var smoothing = 1 - Math.exp(-dt * 14);
+      ringX += (pointerX - ringX) * smoothing;
+      ringY += (pointerY - ringY) * smoothing;
+      ring.style.transform = 'translate(' + ringX + 'px,' + ringY + 'px) translate(-50%,-50%)';
+      requestAnimationFrame(ringLoop);
+    }
+    requestAnimationFrame(ringLoop);
+
+    document.addEventListener('mouseover', function(e){
+      var interactive = e.target.closest('a, button');
+      ring.classList.toggle('hover', !!interactive);
+    });
+
+    document.documentElement.addEventListener('mouseleave', function(){
+      dot.style.opacity = 0;
+      ring.style.opacity = 0;
+    });
+    document.documentElement.addEventListener('mouseenter', function(){
+      dot.style.opacity = 1;
+      ring.style.opacity = 1;
+    });
+  }
+
+  /* ---------- Fallback: if load takes too long, reveal anyway ---------- */
+  setTimeout(function(){
+    if(!document.body.classList.contains('ready')){
+      document.body.classList.add('ready');
+      startLoop();
+    }
+  }, 6000);
+})();
+</script>
+
+</body>
+</html>
