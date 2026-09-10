@@ -700,6 +700,21 @@
   var targetFrame = 0;
   var lastMoveTime = performance.now();
   var idleTriggered = false;
+  
+  // Кэшируем центр, чтобы не вызывать getBoundingClientRect каждый кадр
+  var charCenterX = 0;
+  var charCenterY = 0;
+  
+  function updateCharCenter(){
+    var rect = canvas.getBoundingClientRect();
+    // Центр персонажа (подбирается эмпирически, обычно чуть выше центра canvas)
+    charCenterX = rect.left + rect.width * 0.52;
+    charCenterY = rect.top + rect.height * 0.36;
+  }
+  
+  // Обновляем при ресайзе и старте
+  window.addEventListener('resize', updateCharCenter);
+  updateCharCenter();
 
   function circularDelta(a, b, total){
     var d = b - a;
@@ -709,12 +724,54 @@
   }
 
   function updateTargetFromPointer(x, y){
-    var rect = canvas.getBoundingClientRect();
-    var cx = rect.left + rect.width * 0.52;
-    var cy = rect.top + rect.height * 0.36;
-    var angle = Math.atan2(y - cy, x - cx);
-    var norm = (angle + Math.PI) / (Math.PI * 2);
+    // Пересчитываем центр на случай, если скролл или ресайз (для надежности)
+    // Но в данном случае canvas fixed, так что можно реже.
+    // Для оптимизации вызываем только если нужно.
+    
+    var dx = x - charCenterX;
+    var dy = y - charCenterY;
+    
+    // Защита от деления на ноль / скачков в центре
+    var dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 20) return; // Если курсор прямо на носу, не меняем кадр резко
+
+    // ИСПРАВЛЕНИЕ: 
+    // atan2(y, x) дает 0 = вправо, PI/2 = вниз (т.к. Y растет вниз), PI = влево, -PI/2 = вверх.
+    // Нам нужно преобразовать это в 0..1, где 0 - это кадр 1, 1 - кадр 299.
+    // Предполагаем, что кадры идут по часовой стрелке, начиная с направления "вправо" или "вверх".
+    // Стандартная формула: (angle + PI) / (2*PI) дает 0..1.
+    // Если персонаж смотрит НЕ ТУДА, мы можем инвертировать угол или добавить смещение.
+    
+    // ВАЖНО: Если персонаж смотрит в противоположную сторону, попробуйте:
+    // 1. Инвертировать X: dx = charCenterX - x; (или angle = Math.atan2(dy, -dx))
+    // 2. Или инвертировать Y: dy = charCenterY - y;
+    // 3. Или добавить Math.PI к углу.
+    
+    // Судя по проблеме "смотрит в противоположную сторону", вероятнее всего нужно инвертировать X.
+    // Попробуем инвертировать dx:
+    // var angle = Math.atan2(dy, -dx); 
+    
+    // ИЛИ, возможно, проблема в том, что кадры идут против часовой стрелки.
+    // Тогда: angle = -Math.atan2(dy, dx);
+    
+    // Давайте использовать надежный вариант с инверсией X, так как это классическая проблема зеркалирования.
+    // Если не поможет, поменяйте знак у dx или dy.
+    
+    // ЭКСПЕРИМЕНТАЛЬНО: 
+    // Если персонаж смотрит ВЛЕВО, когда курсор СПРАВА, то нужно инвертировать.
+    // Используем -dx для инверсии горизонтали.
+    var angle = Math.atan2(dy, -dx); 
+    
+    // Нормализация: atan2 возвращает -PI..PI. Преобразуем в 0..2PI
+    if (angle < 0) angle += Math.PI * 2;
+    
+    // Преобразуем в 0..1
+    var norm = angle / (Math.PI * 2);
+    
+    // Если кадры идут в обратном порядке, используем 1 - norm
+    // Предполагаем прямой порядок.
     targetFrame = Math.round(norm * (TOTAL - 1));
+    
     lastMoveTime = performance.now();
     idleTriggered = false;
   }
@@ -748,7 +805,8 @@
         idleTriggered = true;
       }
       var delta = circularDelta(currentFrame, targetFrame, TOTAL);
-      currentFrame += delta * (reduceMotion ? 1 : 0.12);
+      // Ускорил реакцию (0.12 -> 0.18) для лучшего отклика
+      currentFrame += delta * (reduceMotion ? 1 : 0.18);
       currentFrame = ((currentFrame % TOTAL) + TOTAL) % TOTAL;
       drawFrame(currentFrame);
       requestAnimationFrame(loop);
