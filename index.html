@@ -643,6 +643,20 @@
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var pointerFine = window.matchMedia('(pointer: fine)').matches;
 
+  /* ============================================================
+     ★★★  ФИНАЛЬНЫЕ НАСТРОЙКИ — ПОДОБРАНЫ ВАМИ  ★★★
+     ============================================================ */
+  // Центр вращения (в долях от размера canvas)
+  var CENTER_RATIO_X = 0.625;
+  var CENTER_RATIO_Y = 0.425;
+
+  // Фазовый сдвиг кадров (в кадрах)
+  var PHASE_OFFSET = 5;
+
+  // Формула угла: инверсия Y
+  // (курсор вверх = угол 90°, курсор вниз = 270°)
+  // ============================================================
+
   /* ---------- Preload frames ---------- */
   var frames = new Array(TOTAL);
   var loaded = 0;
@@ -682,10 +696,12 @@
   resizeCanvas();
 
   function drawFrame(index){
-    var img = frames[Math.max(0, Math.min(TOTAL - 1, Math.round(index)))];
+    var idx = ((Math.round(index) % TOTAL) + TOTAL) % TOTAL;
+    var img = frames[idx];
     if(!img || !img.complete || !img.naturalWidth) return;
     var cw = canvas.clientWidth, ch = canvas.clientHeight;
     var iw = img.naturalWidth, ih = img.naturalHeight;
+    // HD: canvas заполняется без растягивания мыла
     var scale = Math.max(cw / iw, ch / ih);
     var dw = iw * scale, dh = ih * scale;
     var dx = (cw - dw) / 2, dy = (ch - dh) / 2;
@@ -693,28 +709,20 @@
     ctx.drawImage(img, dx, dy, dw, dh);
   }
 
-  /* ---------- Pointer tracking & frame mapping ---------- */
-  var pointerX = window.innerWidth * 0.5;
-  var pointerY = window.innerHeight * 0.4;
+  /* ---------- Центр персонажа на экране ---------- */
+  function getCenterScreen(){
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width * CENTER_RATIO_X,
+      y: rect.top + rect.height * CENTER_RATIO_Y
+    };
+  }
+
+  /* ---------- Pointer tracking ---------- */
   var currentFrame = 0;
   var targetFrame = 0;
   var lastMoveTime = performance.now();
   var idleTriggered = false;
-  
-  // Кэшируем центр, чтобы не вызывать getBoundingClientRect каждый кадр
-  var charCenterX = 0;
-  var charCenterY = 0;
-  
-  function updateCharCenter(){
-    var rect = canvas.getBoundingClientRect();
-    // Центр персонажа (подбирается эмпирически, обычно чуть выше центра canvas)
-    charCenterX = rect.left + rect.width * 0.52;
-    charCenterY = rect.top + rect.height * 0.36;
-  }
-  
-  // Обновляем при ресайзе и старте
-  window.addEventListener('resize', updateCharCenter);
-  updateCharCenter();
 
   function circularDelta(a, b, total){
     var d = b - a;
@@ -724,76 +732,37 @@
   }
 
   function updateTargetFromPointer(x, y){
-    // Пересчитываем центр на случай, если скролл или ресайз (для надежности)
-    // Но в данном случае canvas fixed, так что можно реже.
-    // Для оптимизации вызываем только если нужно.
-    
-    var dx = x - charCenterX;
-    var dy = y - charCenterY;
-    
-    // Защита от деления на ноль / скачков в центре
+    var c = getCenterScreen();
+    var dx = x - c.x;
+    var dy = y - c.y;
     var dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist < 20) return; // Если курсор прямо на носу, не меняем кадр резко
+    if (dist < 25) return;
 
-    // ИСПРАВЛЕНИЕ: 
-    // atan2(y, x) дает 0 = вправо, PI/2 = вниз (т.к. Y растет вниз), PI = влево, -PI/2 = вверх.
-    // Нам нужно преобразовать это в 0..1, где 0 - это кадр 1, 1 - кадр 299.
-    // Предполагаем, что кадры идут по часовой стрелке, начиная с направления "вправо" или "вверх".
-    // Стандартная формула: (angle + PI) / (2*PI) дает 0..1.
-    // Если персонаж смотрит НЕ ТУДА, мы можем инвертировать угол или добавить смещение.
-    
-    // ВАЖНО: Если персонаж смотрит в противоположную сторону, попробуйте:
-    // 1. Инвертировать X: dx = charCenterX - x; (или angle = Math.atan2(dy, -dx))
-    // 2. Или инвертировать Y: dy = charCenterY - y;
-    // 3. Или добавить Math.PI к углу.
-    
-    // Судя по проблеме "смотрит в противоположную сторону", вероятнее всего нужно инвертировать X.
-    // Попробуем инвертировать dx:
-    // var angle = Math.atan2(dy, -dx); 
-    
-    // ИЛИ, возможно, проблема в том, что кадры идут против часовой стрелки.
-    // Тогда: angle = -Math.atan2(dy, dx);
-    
-    // Давайте использовать надежный вариант с инверсией X, так как это классическая проблема зеркалирования.
-    // Если не поможет, поменяйте знак у dx или dy.
-    
-    // ЭКСПЕРИМЕНТАЛЬНО: 
-    // Если персонаж смотрит ВЛЕВО, когда курсор СПРАВА, то нужно инвертировать.
-    // Используем -dx для инверсии горизонтали.
-    var angle = Math.atan2(dy, -dx); 
-    
-    // Нормализация: atan2 возвращает -PI..PI. Преобразуем в 0..2PI
+    // ★ Финальная формула: инверсия Y + фазовый сдвиг
+    var angle = Math.atan2(-dy, dx);
     if (angle < 0) angle += Math.PI * 2;
-    
-    // Преобразуем в 0..1
-    var norm = angle / (Math.PI * 2);
-    
-    // Если кадры идут в обратном порядке, используем 1 - norm
-    // Предполагаем прямой порядок.
-    targetFrame = Math.round(norm * (TOTAL - 1));
-    
+
+    var norm = angle / (Math.PI * 2); // 0..1
+    var raw = norm * TOTAL + PHASE_OFFSET;
+    targetFrame = ((raw % TOTAL) + TOTAL) % TOTAL;
+
     lastMoveTime = performance.now();
     idleTriggered = false;
   }
 
-  function handlePointer(x, y){
-    pointerX = x; pointerY = y;
-    updateTargetFromPointer(x, y);
-  }
-
   window.addEventListener('pointermove', function(e){
-    handlePointer(e.clientX, e.clientY);
+    updateTargetFromPointer(e.clientX, e.clientY);
   }, { passive: true });
 
   window.addEventListener('touchmove', function(e){
     if(e.touches && e.touches[0]){
-      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+      updateTargetFromPointer(e.touches[0].clientX, e.touches[0].clientY);
     }
   }, { passive: true });
 
   window.addEventListener('touchstart', function(e){
     if(e.touches && e.touches[0]){
-      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+      updateTargetFromPointer(e.touches[0].clientX, e.touches[0].clientY);
     }
   }, { passive: true });
 
@@ -801,12 +770,12 @@
   function startLoop(){
     function loop(now){
       if(!idleTriggered && now - lastMoveTime > 7000){
-        targetFrame = 0; // нейтральный кадр — смотрит в камеру
+        targetFrame = 0;
         idleTriggered = true;
       }
       var delta = circularDelta(currentFrame, targetFrame, TOTAL);
-      // Ускорил реакцию (0.12 -> 0.18) для лучшего отклика
-      currentFrame += delta * (reduceMotion ? 1 : 0.18);
+      // Скорость реакции — быстро, но плавно
+      currentFrame += delta * (reduceMotion ? 1 : 0.25);
       currentFrame = ((currentFrame % TOTAL) + TOTAL) % TOTAL;
       drawFrame(currentFrame);
       requestAnimationFrame(loop);
@@ -819,10 +788,12 @@
     document.body.classList.add('has-cursor');
     var dot = document.getElementById('cursor-dot');
     var ring = document.getElementById('cursor-ring');
-    var ringX = pointerX, ringY = pointerY;
+    var ringX = window.innerWidth / 2, ringY = window.innerHeight / 2;
+    var pointerX = ringX, pointerY = ringY;
     var lastT = performance.now();
 
     window.addEventListener('pointermove', function(e){
+      pointerX = e.clientX; pointerY = e.clientY;
       dot.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px) translate(-50%,-50%)';
     }, { passive: true });
 
@@ -852,13 +823,13 @@
     });
   }
 
-  /* ---------- Fallback: if load takes too long, reveal anyway ---------- */
+  /* ---------- Fallback ---------- */
   setTimeout(function(){
     if(!document.body.classList.contains('ready')){
       document.body.classList.add('ready');
       startLoop();
     }
-  }, 6000);
+  }, 8000);
 })();
 </script>
 
