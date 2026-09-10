@@ -36,12 +36,10 @@
     color: var(--cream);
     font-family: 'Rubik', sans-serif;
     position: relative;
+  }
 
-    /* Убираем тач-хайлайт и выделение текста */
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    user-select: none;
-    -webkit-user-select: none;
+  body.has-cursor, body.has-cursor a, body.has-cursor button{
+    cursor: none;
   }
 
   a{ color: inherit; text-decoration: none; }
@@ -82,47 +80,6 @@
     height: 100vh;
     z-index: 2;
     display: block;
-
-    /* Убираем рамку фокуса, выделение и тач-хайлайт */
-    outline: none;
-    border: none;
-    box-shadow: none;
-    background: transparent;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    user-select: none;
-    -webkit-user-select: none;
-    pointer-events: none;   /* canvas не перехватывает клики — рамок не будет */
-  }
-
-  /* Планшеты */
-  @media (max-width: 1100px){
-    #chubaka{
-      width: 70vw;
-      left: 15vw;
-      right: auto;
-    }
-  }
-
-  /* Мобильные: персонаж меньше и по центру */
-  @media (max-width: 900px){
-    #chubaka{
-      width: 75vw;
-      left: 12.5vw;
-      right: auto;
-      height: 70vh;
-      top: 15vh;
-    }
-  }
-
-  @media (max-width: 560px){
-    #chubaka{
-      width: 85vw;
-      left: 7.5vw;
-      right: auto;
-      height: 60vh;
-      top: 20vh;
-    }
   }
 
   /* ---------- Header ---------- */
@@ -433,47 +390,27 @@
     color: var(--white-50);
   }
 
-  /* ---------- Responsive hero (тексты меньше на мобильных) ---------- */
+  /* ---------- Responsive hero ---------- */
   @media (max-width: 900px){
+    #chubaka{ width: 100vw; opacity: .55; }
     .vignette{
       background:
-        linear-gradient(rgba(6,49,51,.25), rgba(6,49,51,.05) 30%, rgba(6,49,51,.55) 75%, rgba(6,49,51,.85));
+        linear-gradient(rgba(6,49,51,.35), rgba(6,49,51,.15) 30%, rgba(6,49,51,.55) 75%, rgba(6,49,51,.85));
     }
     main.hero{ padding: 110px 24px 0; align-items: flex-start; }
     .hero-left{ width: 100%; }
-
-    /* Заголовок — компактнее */
-    h1{ font-size: clamp(22px, 6.5vw, 32px); margin-top: 12px; }
-
-    /* Подзаголовок — меньше */
-    .lede{ font-size: 13px; line-height: 1.45; margin-top: 14px; }
-
-    /* Бейдж — меньше */
-    .badge{ font-size: 9px; letter-spacing: .1em; }
-    .badge-check{ width: 18px; height: 18px; font-size: 10px; }
-
-    /* Цифры-статистика — меньше */
-    .data-num{ font-size: 16px; }
-    .data-label{ font-size: 8.5px; }
-
+    h1{ font-size: clamp(30px, 8vw, 42px); }
+    .lede{ max-width: 100%; }
     .hero-right{ display:none; }
   }
   @media (max-width: 560px){
     header{ padding: 0 18px; height: 78px; }
     .brand-index{ display:none; }
-    .logo{ font-size: 15px; }
-    .menu-pill a{ font-size: 11px; padding: 6px 12px; }
-
     footer{ padding: 0 18px; flex-direction: column; align-items: flex-start; gap: 4px; height: 60px; justify-content:center; }
     .data-row{ display:none; }
-
-    h1{ font-size: clamp(20px, 7vw, 28px); }
-    .lede{ font-size: 12.5px; }
-
-    .hero-actions{ gap: 10px; flex-wrap: wrap; margin-top: 20px; }
-    .btn-cream{ height: 42px; padding: 0 18px; font-size: 11.5px; }
-    .btn-play{ width: 42px; height: 42px; font-size: 14px; }
-    .btn-play-wrap span{ font-size: 9px; letter-spacing: .1em; }
+    .hero-actions{ gap: 14px; flex-wrap: wrap; }
+    .btn-cream{ height: 50px; padding: 0 20px; font-size: 12.5px; }
+    .btn-play{ width: 50px; height: 50px; }
   }
 
   /* ---------- Reveal ---------- */
@@ -707,11 +644,17 @@
   var pointerFine = window.matchMedia('(pointer: fine)').matches;
 
   /* ============================================================
-     ★★★  ФИНАЛЬНЫЕ НАСТРОЙКИ  ★★★
+     ★★★  ФИНАЛЬНЫЕ НАСТРОЙКИ — ПОДОБРАНЫ ВАМИ  ★★★
      ============================================================ */
+  // Центр вращения (в долях от размера canvas)
   var CENTER_RATIO_X = 0.625;
   var CENTER_RATIO_Y = 0.425;
+
+  // Фазовый сдвиг кадров (в кадрах)
   var PHASE_OFFSET = 5;
+
+  // Формула угла: инверсия Y
+  // (курсор вверх = угол 90°, курсор вниз = 270°)
   // ============================================================
 
   /* ---------- Preload frames ---------- */
@@ -758,6 +701,7 @@
     if(!img || !img.complete || !img.naturalWidth) return;
     var cw = canvas.clientWidth, ch = canvas.clientHeight;
     var iw = img.naturalWidth, ih = img.naturalHeight;
+    // HD: canvas заполняется без растягивания мыла
     var scale = Math.max(cw / iw, ch / ih);
     var dw = iw * scale, dh = ih * scale;
     var dx = (cw - dw) / 2, dy = (ch - dh) / 2;
@@ -765,6 +709,7 @@
     ctx.drawImage(img, dx, dy, dw, dh);
   }
 
+  /* ---------- Центр персонажа на экране ---------- */
   function getCenterScreen(){
     var rect = canvas.getBoundingClientRect();
     return {
@@ -773,6 +718,7 @@
     };
   }
 
+  /* ---------- Pointer tracking ---------- */
   var currentFrame = 0;
   var targetFrame = 0;
   var lastMoveTime = performance.now();
@@ -792,10 +738,11 @@
     var dist = Math.sqrt(dx*dx + dy*dy);
     if (dist < 25) return;
 
+    // ★ Финальная формула: инверсия Y + фазовый сдвиг
     var angle = Math.atan2(-dy, dx);
     if (angle < 0) angle += Math.PI * 2;
 
-    var norm = angle / (Math.PI * 2);
+    var norm = angle / (Math.PI * 2); // 0..1
     var raw = norm * TOTAL + PHASE_OFFSET;
     targetFrame = ((raw % TOTAL) + TOTAL) % TOTAL;
 
@@ -819,6 +766,7 @@
     }
   }, { passive: true });
 
+  /* ---------- Animation loop ---------- */
   function startLoop(){
     function loop(now){
       if(!idleTriggered && now - lastMoveTime > 7000){
@@ -826,6 +774,7 @@
         idleTriggered = true;
       }
       var delta = circularDelta(currentFrame, targetFrame, TOTAL);
+      // Скорость реакции — быстро, но плавно
       currentFrame += delta * (reduceMotion ? 1 : 0.25);
       currentFrame = ((currentFrame % TOTAL) + TOTAL) % TOTAL;
       drawFrame(currentFrame);
@@ -874,6 +823,7 @@
     });
   }
 
+  /* ---------- Fallback ---------- */
   setTimeout(function(){
     if(!document.body.classList.contains('ready')){
       document.body.classList.add('ready');
